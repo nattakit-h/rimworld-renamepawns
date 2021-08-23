@@ -6,7 +6,7 @@
     <supportedVersions>
         <li>1.3</li>
     </supportedVersions>
-    <description>Add ability to rename your pawn's first and last name.</description>
+    <description>This is a simple mod that will let you change or randomize your pawn's first and last name. It will also let you randomize a new pet name.</description>
     <modDependencies>
       <li>
         <packageId>brrainz.harmony</packageId>
