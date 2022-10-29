@@ -1,11 +1,7 @@
 #!/bin/sh
 
 RSYNC_OPT='-a --info=name'
-
-if [ -z "$PUBLISH_PATH" ]; then
-    echo "error: PUBLISH_PATH is empty"
-    exit
-fi
+PUBLISH_PATH=Publish
 
 rm -rf $PUBLISH_PATH
 mkdir -p $PUBLISH_PATH
