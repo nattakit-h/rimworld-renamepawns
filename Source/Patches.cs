@@ -25,36 +25,71 @@ using Verse;
 namespace RenamePawns
 {
     [StaticConstructorOnStartup]
-    internal static class Patches
+    public static class Patches
     {
         static Patches()
         {
             var harmony = new Harmony("rimworld.relta.renamepawns");
+
             harmony.Patch(
-                AccessTools.Method(typeof(TrainingCardUtility), "DrawRenameButton"),
-                transpiler: new HarmonyMethod(typeof(Patches), "Dialog_NamePawn_CTOR_Transpiler")
-            );
-            harmony.Patch(
-                AccessTools.Method(typeof(CharacterCardUtility), "DrawCharacterCard"),
-                transpiler: new HarmonyMethod(typeof(Patches), "Dialog_NamePawn_CTOR_Transpiler")
+                AccessTools.Method(
+                    typeof(PawnNamingUtility),
+                    nameof(PawnNamingUtility.NamePawnDialog)
+                ),
+                postfix: new HarmonyMethod(
+                    typeof(Patches),
+                    nameof(PawnNamingUtility_NamePawnDialog_Postfix)
+                )
             );
         }
 
-        public static IEnumerable<CodeInstruction> Dialog_NamePawn_CTOR_Transpiler(IEnumerable<CodeInstruction> instructions)
+        public static void PawnNamingUtility_NamePawnDialog_Postfix(
+            ref Dialog_NamePawn __result, Pawn pawn, string initialFirstNameOverride)
         {
-            ConstructorInfo namePawnCtor = AccessTools.Constructor(typeof(Dialog_NamePawn), new Type[] { typeof(Pawn) });
-            ConstructorInfo renamePawnCtor = AccessTools.Constructor(typeof(Dialog_RenamePawn), new Type[] { typeof(Pawn) });
-            foreach (CodeInstruction instruction in instructions)
+            Dictionary<NameFilter, List<string>> suggestedNames = null;
+            NameFilter editableNames;
+            NameFilter visibleNames;
+
+            if (pawn.babyNamingDeadline >= Find.TickManager.TicksGame || DebugSettings.ShowDevGizmos)
             {
-                if (instruction.opcode == OpCodes.Newobj && instruction.OperandIs(namePawnCtor))
+                editableNames = NameFilter.First | NameFilter.Nick | NameFilter.Last;
+                visibleNames = NameFilter.First | NameFilter.Nick | NameFilter.Last;
+                List<string> list = new List<string>();
+                Pawn mother;
+                if ((mother = pawn.GetMother()) != null)
                 {
-                    yield return new CodeInstruction(OpCodes.Newobj, renamePawnCtor);
+                    list.Add(PawnNamingUtility.GetLastName(mother));
                 }
-                else
+                Pawn father;
+                if ((father = pawn.GetFather()) != null)
                 {
-                    yield return instruction;
+                    list.Add(PawnNamingUtility.GetLastName(father));
                 }
+                Pawn birthParent;
+                if ((birthParent = pawn.GetBirthParent()) != null)
+                {
+                    list.Add(PawnNamingUtility.GetLastName(birthParent));
+                }
+                list.RemoveDuplicates();
+                suggestedNames = new Dictionary<NameFilter, List<string>> {
+                {
+                    NameFilter.Last,
+                    list
+                } };
             }
+            else
+            {
+                visibleNames = NameFilter.First | NameFilter.Nick | NameFilter.Last | NameFilter.Title;
+                editableNames = NameFilter.First | NameFilter.Nick | NameFilter.Last | NameFilter.Title;
+            }
+
+            __result = new Dialog_NamePawn(
+                pawn,
+                visibleNames,
+                editableNames,
+                suggestedNames,
+                initialFirstNameOverride
+            );
         }
     }
 }
